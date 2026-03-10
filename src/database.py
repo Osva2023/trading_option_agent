@@ -26,6 +26,7 @@ class MarketData(db.Model):
     ema20 = db.Column(db.Float)
     ema50 = db.Column(db.Float)
     ema200 = db.Column(db.Float)
+    rsi = db.Column(db.Float)
     tags = db.Column(db.String(200))
 
 class Alert(db.Model):
@@ -63,6 +64,7 @@ def save_market_data(symbol, metrics, tags):
                 ema20=metrics['ema20'],
                 ema50=metrics['ema50'],
                 ema200=metrics['ema200'],
+                rsi=metrics.get('rsi'),
                 tags=', '.join(tags)
             )
             db.session.add(data)

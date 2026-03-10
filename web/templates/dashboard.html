@@ -15,6 +15,79 @@
     <h1>Trading Agent Dashboard</h1>
     <p>Last updated: {{ data.keys() | list | length }} symbols monitored</p>
 
+    <h2>Paper Trading Summary</h2>
+    <table>
+        <tr><th>Starting Cash</th><td>${{ "%.2f"|format(paper_summary.starting_cash) }}</td></tr>
+        <tr><th>Cash</th><td>${{ "%.2f"|format(paper_summary.cash) }}</td></tr>
+        <tr><th>Committed Capital</th><td>${{ "%.2f"|format(paper_summary.committed_capital) }}</td></tr>
+        <tr><th>Market Value</th><td>${{ "%.2f"|format(paper_summary.market_value) }}</td></tr>
+        <tr><th>Realized P&amp;L</th><td>${{ "%.2f"|format(paper_summary.realized_pnl) }}</td></tr>
+        <tr><th>Unrealized P&amp;L</th><td>${{ "%.2f"|format(paper_summary.unrealized_pnl) }}</td></tr>
+        <tr><th>Equity</th><td>${{ "%.2f"|format(paper_summary.equity) }}</td></tr>
+        <tr><th>Open Positions</th><td>{{ paper_summary.open_positions }}</td></tr>
+        <tr><th>Closed Trades</th><td>{{ paper_summary.closed_trades }}</td></tr>
+    </table>
+
+    <h2>Open Paper Positions</h2>
+    {% if paper_positions %}
+    <table>
+        <tr>
+            <th>Symbol</th>
+            <th>Strategy</th>
+            <th>Qty</th>
+            <th>Entry</th>
+            <th>Current</th>
+            <th>Stop</th>
+            <th>Target</th>
+            <th>Opened</th>
+        </tr>
+        {% for position in paper_positions %}
+        <tr>
+            <td>{{ position.symbol }}</td>
+            <td>{{ position.strategy }}</td>
+            <td>{{ position.quantity }}</td>
+            <td>${{ "%.2f"|format(position.entry_price) }}</td>
+            <td>${{ "%.2f"|format(position.current_price or position.entry_price) }}</td>
+            <td>${{ "%.2f"|format(position.stop_loss or 0) }}</td>
+            <td>${{ "%.2f"|format(position.target_price or 0) }}</td>
+            <td>{{ position.entry_time }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <p>No open paper positions.</p>
+    {% endif %}
+
+    <h2>Recent Paper Trades</h2>
+    {% if paper_trades %}
+    <table>
+        <tr>
+            <th>Symbol</th>
+            <th>Strategy</th>
+            <th>Qty</th>
+            <th>Entry</th>
+            <th>Exit</th>
+            <th>P&amp;L</th>
+            <th>Return</th>
+            <th>Exit Reason</th>
+        </tr>
+        {% for trade in paper_trades %}
+        <tr>
+            <td>{{ trade.symbol }}</td>
+            <td>{{ trade.strategy }}</td>
+            <td>{{ trade.quantity }}</td>
+            <td>${{ "%.2f"|format(trade.entry_price) }}</td>
+            <td>${{ "%.2f"|format(trade.exit_price) }}</td>
+            <td>${{ "%.2f"|format(trade.realized_pnl) }}</td>
+            <td>{{ "%.2f"|format(trade.realized_pct) }}%</td>
+            <td>{{ trade.exit_reason }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <p>No closed paper trades yet.</p>
+    {% endif %}
+
     {% for symbol, info in data.items() %}
     <div class="symbol">
         <h2>{{ symbol }}</h2>
@@ -25,6 +98,7 @@
             <tr><th>Volatility</th><td>{{ "%.2f"|format(info.market_data.volatility) }}%</td></tr>
             <tr><th>ATR</th><td>{{ "%.2f"|format(info.market_data.atr) }}</td></tr>
             <tr><th>EMA 20/50/200</th><td>{{ "%.2f"|format(info.market_data.ema20) }} / {{ "%.2f"|format(info.market_data.ema50) }} / {{ "%.2f"|format(info.market_data.ema200) }}</td></tr>
+            <tr><th>RSI</th><td>{{ "%.2f"|format(info.market_data.rsi or 0) }}</td></tr>
             <tr><th>Tags</th><td>{{ info.market_data.tags }}</td></tr>
             <tr><th>Timestamp</th><td>{{ info.market_data.timestamp }}</td></tr>
         </table>
@@ -35,7 +109,7 @@
         <table>
             <tr><th>Spot Price</th><td>${{ "%.2f"|format(info.options_data.spot_price) }}</td></tr>
             <tr><th>Calls/Puts</th><td>{{ info.options_data.calls_count }} / {{ info.options_data.puts_count }}</td></tr>
-            <tr><th>Avg IV (Call/Put)</th><td>{{ "%.1%"|format(info.options_data.avg_call_iv or 0) }} / {{ "%.1%"|format(info.options_data.avg_put_iv or 0) }}</td></tr>
+            <tr><th>Avg IV (Call/Put)</th><td>{{ ((info.options_data.avg_call_iv or 0) * 100)|round(1) }}% / {{ ((info.options_data.avg_put_iv or 0) * 100)|round(1) }}%</td></tr>
             <tr><th>Nearest Expiration</th><td>{{ info.options_data.nearest_expiration }}</td></tr>
         </table>
         {% endif %}

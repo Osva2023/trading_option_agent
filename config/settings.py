@@ -40,5 +40,12 @@ LOG_FILE = os.path.join(LOG_DIR, 'agent.log')
 FLASK_HOST = os.getenv('FLASK_HOST', '0.0.0.0')
 FLASK_PORT = int(os.getenv('FLASK_PORT', '5001'))
 
+# Paper Trading
+PAPER_TRADING_ENABLED = os.getenv('PAPER_TRADING_ENABLED', 'True').lower() in ('true', '1', 'yes')
+PAPER_STARTING_CASH = float(os.getenv('PAPER_STARTING_CASH', '10000'))
+PAPER_POSITION_SIZE_PCT = float(os.getenv('PAPER_POSITION_SIZE_PCT', '0.10'))
+PAPER_RSI_ENTRY = float(os.getenv('PAPER_RSI_ENTRY', '30'))
+PAPER_RSI_EXIT = float(os.getenv('PAPER_RSI_EXIT', '55'))
+
 # Test Mode
 TEST_MODE = os.getenv('TEST_MODE', 'False').lower() in ('true', '1', 'yes')

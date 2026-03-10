@@ -18,8 +18,9 @@ def test_imports():
     try:
         from config.settings import SYMBOLS, POLYGON_API_KEY
         from src.utils import get_historical_data, calculate_metrics, classify_market
-        from src.database import MarketData, Alert, OptionsData
+        from src.database import MarketData, Alert, OptionsData, PaperPosition, PaperTrade
         from src.backtest import run_backtest
+        from src.paper_trading import process_paper_signal
         from web.app import flask_app
         print("   ✅ All imports successful")
         return True
@@ -81,13 +82,15 @@ def test_database():
     """Test 5: Database operations"""
     print("🧪 Test 5: Database Operations")
     try:
-        from src.database import MarketData, Alert, OptionsData, db
+        from src.database import MarketData, Alert, OptionsData, PaperPosition, PaperTrade, db
         from config.settings import DATABASE_URI
 
         # Test model creation
         assert MarketData, "MarketData model not available"
         assert Alert, "Alert model not available"
         assert OptionsData, "OptionsData model not available"
+        assert PaperPosition, "PaperPosition model not available"
+        assert PaperTrade, "PaperTrade model not available"
 
         print(f"   ✅ Database models: OK (URI: {DATABASE_URI.split('/')[-1]})")
         return True
@@ -136,6 +139,47 @@ def test_market_hours():
         print(f"   ❌ Market hours test failed: {e}")
         return False
 
+def test_paper_trading():
+    """Test 8: Paper trading engine"""
+    print("🧪 Test 8: Paper Trading Engine")
+    try:
+        from src.database import app, db, PaperPosition, PaperTrade
+        from src.paper_trading import process_paper_signal
+
+        entry_metrics = {
+            'last_close': 100.0,
+            'ema50': 99.0,
+            'atr': 2.0,
+            'rsi': 25.0,
+        }
+        exit_metrics = {
+            'last_close': 104.5,
+            'ema50': 101.0,
+            'atr': 2.0,
+            'rsi': 58.0,
+        }
+
+        with app.app_context():
+            PaperTrade.query.delete()
+            PaperPosition.query.delete()
+            db.session.commit()
+
+        opened = process_paper_signal('SPY', entry_metrics, ['TRENDING_UP', 'OVERSOLD'])
+        assert opened and opened['action'] == 'opened', "Paper position did not open"
+
+        closed = process_paper_signal('SPY', exit_metrics, ['TRENDING_UP', 'RSI_NEUTRAL'])
+        assert closed and closed['action'] == 'closed', "Paper position did not close"
+
+        with app.app_context():
+            assert PaperPosition.query.count() == 0, "Open paper position was not cleared"
+            assert PaperTrade.query.count() == 1, "Closed paper trade was not recorded"
+
+        print("   ✅ Paper trading: open and close flow works")
+        return True
+    except Exception as e:
+        print(f"   ❌ Paper trading test failed: {e}")
+        return False
+
 def run_all_tests():
     """Run all manual tests"""
     print("=" * 60)
@@ -151,7 +195,8 @@ def run_all_tests():
         test_calculations,
         test_database,
         test_email,
-        test_market_hours
+        test_market_hours,
+        test_paper_trading
     ]
 
     passed = 0

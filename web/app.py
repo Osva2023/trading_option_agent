@@ -6,8 +6,16 @@ import threading
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.database import app as flask_app, db, MarketData, Alert, OptionsData
-from config.settings import SYMBOLS, FLASK_HOST, FLASK_PORT
+from src.database import (
+    app as flask_app,
+    Alert,
+    MarketData,
+    OptionsData,
+    list_open_paper_positions,
+    list_recent_paper_trades,
+    get_paper_account_summary,
+)
+from config.settings import SYMBOLS, FLASK_HOST, FLASK_PORT, PAPER_STARTING_CASH
 
 # Flask routes for web dashboard
 @flask_app.route('/')
@@ -24,7 +32,16 @@ def dashboard():
                 'options_data': options,
                 'recent_alerts': alerts
             }
-    return render_template('dashboard.html', data=latest_data)
+        paper_positions = list_open_paper_positions()
+        paper_trades = list_recent_paper_trades()
+        paper_summary = get_paper_account_summary(PAPER_STARTING_CASH)
+    return render_template(
+        'dashboard.html',
+        data=latest_data,
+        paper_positions=paper_positions,
+        paper_trades=paper_trades,
+        paper_summary=paper_summary,
+    )
 
 @flask_app.route('/api/data')
 def api_data():
@@ -38,6 +55,51 @@ def api_data():
             'tags': d.tags
         } for d in data]
     return jsonify(result)
+
+@flask_app.route('/api/paper-positions')
+def api_paper_positions():
+    positions = list_open_paper_positions()
+    result = [{
+        'symbol': position.symbol,
+        'strategy': position.strategy,
+        'entry_time': position.entry_time.isoformat(),
+        'entry_price': position.entry_price,
+        'current_price': position.current_price,
+        'quantity': position.quantity,
+        'stop_loss': position.stop_loss,
+        'target_price': position.target_price,
+        'entry_reason': position.entry_reason,
+    } for position in positions]
+    return jsonify(result)
+
+@flask_app.route('/api/paper-trades')
+def api_paper_trades():
+    trades = list_recent_paper_trades()
+    result = [{
+        'symbol': trade.symbol,
+        'strategy': trade.strategy,
+        'entry_time': trade.entry_time.isoformat(),
+        'exit_time': trade.exit_time.isoformat(),
+        'entry_price': trade.entry_price,
+        'exit_price': trade.exit_price,
+        'quantity': trade.quantity,
+        'realized_pnl': trade.realized_pnl,
+        'realized_pct': trade.realized_pct,
+        'entry_reason': trade.entry_reason,
+        'exit_reason': trade.exit_reason,
+    } for trade in trades]
+    return jsonify(result)
+
+@flask_app.route('/api/health')
+def api_health():
+    summary = get_paper_account_summary(PAPER_STARTING_CASH)
+    return jsonify({
+        'status': 'ok',
+        'symbols_monitored': len(SYMBOLS),
+        'open_positions': summary['open_positions'],
+        'closed_trades': summary['closed_trades'],
+        'equity': summary['equity'],
+    })
 
 def start_flask():
     from config.settings import FLASK_HOST

@@ -1,0 +1,10 @@
+pandas
+numpy
+alpha_vantage
+polygon-api-client
+backtrader
+yfinance
+flask
+sqlalchemy
+flask-sqlalchemy
+psycopg2-binary

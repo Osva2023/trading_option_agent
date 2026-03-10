@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Trading Agent Dashboard</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .symbol { border: 1px solid #ccc; padding: 10px; margin: 10px 0; }
+        .alert { background-color: #ffeaa7; padding: 5px; margin: 5px 0; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+    </style>
+</head>
+<body>
+    <h1>Trading Agent Dashboard</h1>
+    <p>Last updated: {{ data.keys() | list | length }} symbols monitored</p>
+
+    {% for symbol, info in data.items() %}
+    <div class="symbol">
+        <h2>{{ symbol }}</h2>
+        {% if info.market_data %}
+        <h3>Market Data</h3>
+        <table>
+            <tr><th>Close Price</th><td>${{ "%.2f"|format(info.market_data.close_price) }}</td></tr>
+            <tr><th>Volatility</th><td>{{ "%.2f"|format(info.market_data.volatility) }}%</td></tr>
+            <tr><th>ATR</th><td>{{ "%.2f"|format(info.market_data.atr) }}</td></tr>
+            <tr><th>EMA 20/50/200</th><td>{{ "%.2f"|format(info.market_data.ema20) }} / {{ "%.2f"|format(info.market_data.ema50) }} / {{ "%.2f"|format(info.market_data.ema200) }}</td></tr>
+            <tr><th>Tags</th><td>{{ info.market_data.tags }}</td></tr>
+            <tr><th>Timestamp</th><td>{{ info.market_data.timestamp }}</td></tr>
+        </table>
+        {% endif %}
+
+        {% if info.options_data %}
+        <h3>Options Data</h3>
+        <table>
+            <tr><th>Spot Price</th><td>${{ "%.2f"|format(info.options_data.spot_price) }}</td></tr>
+            <tr><th>Calls/Puts</th><td>{{ info.options_data.calls_count }} / {{ info.options_data.puts_count }}</td></tr>
+            <tr><th>Avg IV (Call/Put)</th><td>{{ "%.1%"|format(info.options_data.avg_call_iv or 0) }} / {{ "%.1%"|format(info.options_data.avg_put_iv or 0) }}</td></tr>
+            <tr><th>Nearest Expiration</th><td>{{ info.options_data.nearest_expiration }}</td></tr>
+        </table>
+        {% endif %}
+
+        <h3>Recent Alerts</h3>
+        {% for alert in info.recent_alerts %}
+        <div class="alert">
+            <strong>{{ alert.alert_type }}</strong> - {{ alert.timestamp }}<br>
+            {{ alert.message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endfor %}
+</body>
+</html>

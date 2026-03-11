@@ -20,6 +20,7 @@ def test_imports():
         from src.utils import get_historical_data, calculate_metrics, classify_market
         from src.database import MarketData, Alert, OptionsData, PaperPosition, PaperTrade
         from src.backtest import run_backtest
+        from src.alert_formatter import build_cycle_alert_email
         from src.paper_trading import process_paper_signal
         from web.app import flask_app
         print("   ✅ All imports successful")
@@ -180,6 +181,42 @@ def test_paper_trading():
         print(f"   ❌ Paper trading test failed: {e}")
         return False
 
+def test_alert_formatting():
+    """Test 9: Consolidated alert formatting"""
+    print("🧪 Test 9: Alert Formatting")
+    try:
+        from src.alert_formatter import build_cycle_alert_email, format_symbol_update
+
+        metrics = {
+            'last_close': 100.0,
+            'rsi': 28.5,
+            'atr': 2.0,
+            'current_vol': 12.5,
+            'hist_vol': 10.0,
+            'iv_rank': 42.0,
+        }
+        message = format_symbol_update(
+            symbol='SPY',
+            previous_tags=['LOW_VOL'],
+            tags=['TRENDING_UP', 'OVERSOLD'],
+            metrics=metrics,
+            advice='Potential bounce from oversold conditions.',
+            options_info={'avg_call_iv': 0.22, 'avg_put_iv': 0.25},
+            paper_result={'action': 'opened', 'reason': 'RSI setup triggered', 'quantity': 10, 'entry_price': 100.0},
+        )
+        subject, body = build_cycle_alert_email(datetime(2026, 3, 10, 15, 30, 0), [{'symbol': 'SPY', 'message': message}], True)
+
+        assert 'Trading Agent Summary' in subject, 'Missing consolidated subject'
+        assert 'Symbol: SPY' in body, 'Missing symbol section in email body'
+        assert 'Paper trade: OPENED' in body, 'Missing paper trade action in email body'
+        assert 'Manual idea:' in body, 'Missing manual action guidance in email body'
+
+        print('   ✅ Alert formatting: consolidated email content looks correct')
+        return True
+    except Exception as e:
+        print(f"   ❌ Alert formatting test failed: {e}")
+        return False
+
 def run_all_tests():
     """Run all manual tests"""
     print("=" * 60)
@@ -196,7 +233,8 @@ def run_all_tests():
         test_database,
         test_email,
         test_market_hours,
-        test_paper_trading
+        test_paper_trading,
+        test_alert_formatting
     ]
 
     passed = 0

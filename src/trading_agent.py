@@ -17,6 +17,7 @@ from src.utils import (
 from src.database import save_market_data, save_alert, save_options_data
 from src.backtest import run_backtest
 from src.paper_trading import process_paper_signal
+from src.alert_formatter import build_cycle_alert_email, format_symbol_update
 
 print("=== AGENT STARTED ===")
 print("Python version:", sys.version)
@@ -56,6 +57,7 @@ while True:
         if TEST_MODE:
             print(f"[TEST MODE] Running outside market hours...")
 
+        cycle_updates = []
 
         for symbol in SYMBOLS:
             print(f"Processing {symbol}")
@@ -96,13 +98,31 @@ while True:
 
             print(log_line)
 
-            # Alerta si tags cambiaron o high vol
-            if symbol not in last_tags or tags != last_tags[symbol]:
-                subject = f"{symbol} Market Alert - {', '.join(tags)}"
-                body = f"{log_line}\nTime: {now.strftime('%Y-%m-%d %H:%M:%S')}"
-                send_email(subject, body)
-                save_alert(symbol, 'market_change', body)
-                last_tags[symbol] = tags.copy()
+            previous_tags = last_tags.get(symbol)
+            tag_changed = previous_tags is None or tags != previous_tags
+            paper_event = paper_result and paper_result.get('action') in {'opened', 'closed'}
+
+            if tag_changed or paper_event:
+                symbol_message = format_symbol_update(
+                    symbol=symbol,
+                    previous_tags=previous_tags,
+                    tags=tags,
+                    metrics=metrics,
+                    advice=advice,
+                    options_info=options_info,
+                    paper_result=paper_result,
+                )
+                cycle_updates.append({
+                    'symbol': symbol,
+                    'message': symbol_message,
+                })
+                save_alert(symbol, 'market_change', symbol_message)
+
+            last_tags[symbol] = tags.copy()
+
+        if cycle_updates:
+            subject, body = build_cycle_alert_email(now, cycle_updates, TEST_MODE)
+            send_email(subject, body)
 
         time.sleep(POLL_INTERVAL)
 

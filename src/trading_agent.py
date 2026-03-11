@@ -16,6 +16,7 @@ from src.utils import (
 )
 from src.database import save_market_data, save_alert, save_options_data
 from src.backtest import run_backtest
+from src.paper_trading import process_paper_signal
 
 print("=== AGENT STARTED ===")
 print("Python version:", sys.version)
@@ -81,11 +82,16 @@ while True:
             save_market_data(symbol, metrics, tags)
             save_options_data(symbol, options_info)
 
+            paper_result = process_paper_signal(symbol, metrics, tags)
+            paper_note = ""
+            if paper_result and paper_result.get('action') in {'opened', 'closed'}:
+                paper_note = f" | Paper: {paper_result['action']} ({paper_result['reason']})"
+
             log_line = (
                 f"{symbol} | Close: {metrics['last_close']} | "
                 f"Vol: {metrics['current_vol']}% (hist {metrics['hist_vol']}%) | "
                 f"IV Rank: {metrics['iv_rank']}% | ATR: {metrics['atr']} | "
-                f"Tags: {', '.join(tags)} | {advice}{options_alert}"
+                f"Tags: {', '.join(tags)} | {advice}{options_alert}{paper_note}"
             )
 
             print(log_line)

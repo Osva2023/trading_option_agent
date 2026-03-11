@@ -96,6 +96,26 @@ def get_historical_data(symbol, days=5):
         logging.error(f"Yahoo Finance también falló para {symbol}: {str(e)}")
         return pd.DataFrame()
 
+def calculate_rsi(df, period=14):
+    """Calculate RSI (Relative Strength Index)"""
+    if len(df) < period + 1:
+        return None
+
+    # Calculate price changes
+    delta = df['close'].diff()
+
+    # Separate gains and losses
+    gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
+
+    # Calculate RS (Relative Strength)
+    rs = gain / loss
+
+    # Calculate RSI
+    rsi = 100 - (100 / (1 + rs))
+
+    return rsi.iloc[-1] if not rsi.empty else None
+
 def calculate_metrics(df):
     if df.empty or len(df) < 50:  # mínimo razonable para intradiario
         return None
@@ -125,6 +145,9 @@ def calculate_metrics(df):
         if max_vol > min_vol:
             iv_rank = (current_vol - min_vol) / (max_vol - min_vol) * 100
 
+    # RSI: 14 períodos (14 * 15 min = ~3.5 horas)
+    rsi = calculate_rsi(df, period=14)
+
     return {
         'current_vol': round(current_vol, 2),
         'hist_vol': round(hist_vol, 2),
@@ -133,6 +156,7 @@ def calculate_metrics(df):
         'ema20': round(ema20, 2),
         'ema50': round(ema50, 2),
         'ema200': round(ema200, 2),
+        'rsi': round(rsi, 2) if rsi is not None else None,
         'last_close': round(df['close'].iloc[-1], 2)
     }
 
@@ -164,6 +188,19 @@ def classify_market(metrics, df):
     elif metrics['iv_rank'] < 30:
         tags.append('LOW_VOL')
         advice.append('Low volatility. Premium selling may be attractive.')
+
+    # RSI (Relative Strength Index)
+    if metrics.get('rsi') is not None:
+        rsi_value = metrics['rsi']
+        if rsi_value > 70:
+            tags.append('OVERBOUGHT')
+            advice.append(f'RSI {rsi_value:.1f}: Overbought conditions. Potential reversal.')
+        elif rsi_value < 30:
+            tags.append('OVERSOLD')
+            advice.append(f'RSI {rsi_value:.1f}: Oversold conditions. Potential bounce.')
+        else:
+            tags.append('RSI_NEUTRAL')
+            advice.append(f'RSI {rsi_value:.1f}: Neutral momentum.')
 
     return tags, ' '.join(advice)
 

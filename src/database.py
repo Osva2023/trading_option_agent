@@ -3,6 +3,7 @@ import sys
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
+from flask_migrate import Migrate
 
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -18,7 +19,7 @@ app = Flask(__name__, template_folder=TEMPLATE_DIR, static_folder=STATIC_DIR)
 app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URI
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
-
+migrate = Migrate(app, db)
 class MarketData(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     symbol = db.Column(db.String(10), nullable=False)
@@ -79,8 +80,8 @@ class PaperTrade(db.Model):
     exit_reason = db.Column(db.Text)
 
 # Create tables
-with app.app_context():
-    db.create_all()
+#with app.app_context():
+    # db.create_all()
 
 def save_market_data(symbol, metrics, tags):
     """Save market metrics to database."""

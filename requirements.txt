@@ -8,3 +8,4 @@ flask
 sqlalchemy
 flask-sqlalchemy
 psycopg2-binary
+Flask-Migrate

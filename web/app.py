@@ -2,6 +2,9 @@ import os
 import sys
 from flask import Flask, jsonify, render_template
 import threading
+from datetime import datetime
+from src.utils import is_market_open
+from config.settings import TEST_MODE
 
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -100,6 +103,41 @@ def api_health():
         'closed_trades': summary['closed_trades'],
         'equity': summary['equity'],
     })
+
+@flask_app.route('/api/summary')
+def api_summary():
+    with flask_app.app_context():
+        latest_market = MarketData.query.order_by(MarketData.timestamp.desc()).first()
+        latest_alert = Alert.query.order_by(Alert.timestamp.desc()).first()
+        latest_options = OptionsData.query.order_by(OptionsData.timestamp.desc()).first()
+
+        paper_summary = get_paper_account_summary(PAPER_STARTING_CASH)
+
+    now = datetime.now()
+    return jsonify({
+        'status': 'ok',
+        'server_time': now.isoformat(),
+        'market_open_now': is_market_open(now),
+        'test_mode': TEST_MODE,
+        'symbols_monitored': len(SYMBOLS),
+
+        'latest_market_data_at': latest_market.timestamp.isoformat() if latest_market else None,
+        'latest_alert_at': latest_alert.timestamp.isoformat() if latest_alert else None,
+        'latest_options_at': latest_options.timestamp.isoformat() if latest_options else None,
+
+        'paper' : {
+            'starting_cash': paper_summary['starting_cash'],
+            'cash': paper_summary['cash'],
+            'committed_capital': paper_summary['committed_capital'],
+            'market_value': paper_summary['market_value'],
+            'realized_pnl': paper_summary['realized_pnl'],
+            'unrealized_pnl': paper_summary['unrealized_pnl'],
+            'equity': paper_summary['equity'],
+            'open_positions': paper_summary['open_positions'],
+            'closed_trades': paper_summary['closed_trades'],
+        }
+    })
+    
 
 def start_flask():
     from config.settings import FLASK_HOST

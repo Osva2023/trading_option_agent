@@ -9,26 +9,42 @@
         table { border-collapse: collapse; width: 100%; }
         th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
         th { background-color: #f2f2f2; }
+        #status-bar { background: #f8f9fa; border: 1px solid #dee2e6; padding: 8px 12px; margin-bottom: 15px; border-radius: 4px; display: flex; gap: 20px; align-items: center; font-size: 14px; flex-wrap: wrap; }
+        .badge { padding: 3px 8px; border-radius: 3px; font-weight: bold; color: #fff; font-size: 12px; }
+        .badge-green { background: #28a745; }
+        .badge-red { background: #dc3545; }
+        .badge-orange { background: #fd7e14; }
+        .badge-gray { background: #6c757d; }
+        #refresh-indicator { margin-left: auto; color: #6c757d; font-size: 12px; }
+        .pnl-positive { color: #28a745; font-weight: bold; }
+        .pnl-negative { color: #dc3545; font-weight: bold; }
     </style>
 </head>
 <body>
     <h1>Trading Agent Dashboard</h1>
-    <p>Last updated: {{ data.keys() | list | length }} symbols monitored</p>
+    <div id="status-bar">
+        <span>Market: <span id="market-badge" class="badge badge-gray">loading...</span></span>
+        <span>Equity: $<span id="equity-val">—</span></span>
+        <span>Net P&amp;L: <span id="pnl-val">—</span></span>
+        <span>Symbols: {{ data.keys() | list | length }}</span>
+        <span id="refresh-indicator">Auto-refresh every 15s &mdash; Last: <span id="last-refreshed">—</span></span>
+    </div>
 
     <h2>Paper Trading Summary</h2>
     <table>
         <tr><th>Starting Cash</th><td>${{ "%.2f"|format(paper_summary.starting_cash) }}</td></tr>
-        <tr><th>Cash</th><td>${{ "%.2f"|format(paper_summary.cash) }}</td></tr>
-        <tr><th>Committed Capital</th><td>${{ "%.2f"|format(paper_summary.committed_capital) }}</td></tr>
-        <tr><th>Market Value</th><td>${{ "%.2f"|format(paper_summary.market_value) }}</td></tr>
-        <tr><th>Realized P&amp;L</th><td>${{ "%.2f"|format(paper_summary.realized_pnl) }}</td></tr>
-        <tr><th>Unrealized P&amp;L</th><td>${{ "%.2f"|format(paper_summary.unrealized_pnl) }}</td></tr>
-        <tr><th>Equity</th><td>${{ "%.2f"|format(paper_summary.equity) }}</td></tr>
-        <tr><th>Open Positions</th><td>{{ paper_summary.open_positions }}</td></tr>
-        <tr><th>Closed Trades</th><td>{{ paper_summary.closed_trades }}</td></tr>
+        <tr><th>Cash</th><td id="td-cash">${{ "%.2f"|format(paper_summary.cash) }}</td></tr>
+        <tr><th>Committed Capital</th><td id="td-committed">${{ "%.2f"|format(paper_summary.committed_capital) }}</td></tr>
+        <tr><th>Market Value</th><td id="td-market-value">${{ "%.2f"|format(paper_summary.market_value) }}</td></tr>
+        <tr><th>Realized P&amp;L</th><td id="td-realized-pnl">${{ "%.2f"|format(paper_summary.realized_pnl) }}</td></tr>
+        <tr><th>Unrealized P&amp;L</th><td id="td-unrealized-pnl">${{ "%.2f"|format(paper_summary.unrealized_pnl) }}</td></tr>
+        <tr><th>Equity</th><td id="td-equity">${{ "%.2f"|format(paper_summary.equity) }}</td></tr>
+        <tr><th>Open Positions</th><td id="td-open-positions">{{ paper_summary.open_positions }}</td></tr>
+        <tr><th>Closed Trades</th><td id="td-closed-trades">{{ paper_summary.closed_trades }}</td></tr>
     </table>
 
     <h2>Open Paper Positions</h2>
+    <div id="positions-section">
     {% if paper_positions %}
     <table>
         <tr>
@@ -57,8 +73,10 @@
     {% else %}
     <p>No open paper positions.</p>
     {% endif %}
+    </div>
 
     <h2>Recent Paper Trades</h2>
+    <div id="trades-section">
     {% if paper_trades %}
     <table>
         <tr>
@@ -87,6 +105,7 @@
     {% else %}
     <p>No closed paper trades yet.</p>
     {% endif %}
+    </div>
 
     {% for symbol, info in data.items() %}
     <div class="symbol">
@@ -123,5 +142,96 @@
         {% endfor %}
     </div>
     {% endfor %}
+<script>
+function fmt(n) { return Number(n).toFixed(2); }
+function fmtPnl(n) {
+    var s = (n >= 0 ? '+$' : '-$') + Math.abs(Number(n)).toFixed(2);
+    return '<span class="' + (n >= 0 ? 'pnl-positive' : 'pnl-negative') + '">' + s + '</span>';
+}
+function esc(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function refreshSummary() {
+    fetch('/api/summary')
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            var p = d.paper;
+            document.getElementById('td-cash').textContent = '$' + fmt(p.cash);
+            document.getElementById('td-committed').textContent = '$' + fmt(p.committed_capital);
+            document.getElementById('td-market-value').textContent = '$' + fmt(p.market_value);
+            document.getElementById('td-realized-pnl').innerHTML = fmtPnl(p.realized_pnl);
+            document.getElementById('td-unrealized-pnl').innerHTML = fmtPnl(p.unrealized_pnl);
+            document.getElementById('td-equity').textContent = '$' + fmt(p.equity);
+            document.getElementById('td-open-positions').textContent = p.open_positions;
+            document.getElementById('td-closed-trades').textContent = p.closed_trades;
+            var badge = document.getElementById('market-badge');
+            badge.textContent = d.market_open_now ? 'OPEN' : 'CLOSED';
+            badge.className = 'badge ' + (d.market_open_now ? 'badge-green' : 'badge-red');
+            document.getElementById('equity-val').textContent = fmt(p.equity);
+            var totalPnl = p.realized_pnl + p.unrealized_pnl;
+            var pnlEl = document.getElementById('pnl-val');
+            pnlEl.innerHTML = fmtPnl(totalPnl);
+        })
+        .catch(function() {
+            var badge = document.getElementById('market-badge');
+            badge.textContent = 'ERR';
+            badge.className = 'badge badge-orange';
+        });
+}
+
+function refreshPositions() {
+    fetch('/api/paper-positions')
+        .then(function(r) { return r.json(); })
+        .then(function(positions) {
+            var sec = document.getElementById('positions-section');
+            if (!positions.length) {
+                sec.innerHTML = '<p>No open paper positions.</p>';
+                return;
+            }
+            var rows = positions.map(function(p) {
+                return '<tr><td>' + esc(p.symbol) + '</td><td>' + esc(p.strategy) + '</td><td>' + esc(p.quantity) + '</td>' +
+                    '<td>$' + fmt(p.entry_price) + '</td><td>$' + fmt(p.current_price || p.entry_price) + '</td>' +
+                    '<td>$' + fmt(p.stop_loss || 0) + '</td><td>$' + fmt(p.target_price || 0) + '</td>' +
+                    '<td>' + esc(p.entry_time) + '</td></tr>';
+            }).join('');
+            sec.innerHTML = '<table><tr><th>Symbol</th><th>Strategy</th><th>Qty</th><th>Entry</th>' +
+                '<th>Current</th><th>Stop</th><th>Target</th><th>Opened</th></tr>' + rows + '</table>';
+        })
+        .catch(function() {});
+}
+
+function refreshTrades() {
+    fetch('/api/paper-trades')
+        .then(function(r) { return r.json(); })
+        .then(function(trades) {
+            var sec = document.getElementById('trades-section');
+            if (!trades.length) {
+                sec.innerHTML = '<p>No closed paper trades yet.</p>';
+                return;
+            }
+            var rows = trades.map(function(t) {
+                return '<tr><td>' + esc(t.symbol) + '</td><td>' + esc(t.strategy) + '</td><td>' + esc(t.quantity) + '</td>' +
+                    '<td>$' + fmt(t.entry_price) + '</td><td>$' + fmt(t.exit_price) + '</td>' +
+                    '<td>' + fmtPnl(t.realized_pnl) + '</td>' +
+                    '<td>' + Number(t.realized_pct).toFixed(2) + '%</td>' +
+                    '<td>' + esc(t.exit_reason) + '</td></tr>';
+            }).join('');
+            sec.innerHTML = '<table><tr><th>Symbol</th><th>Strategy</th><th>Qty</th><th>Entry</th>' +
+                '<th>Exit</th><th>P&amp;L</th><th>Return</th><th>Exit Reason</th></tr>' + rows + '</table>';
+        })
+        .catch(function() {});
+}
+
+function refresh() {
+    refreshSummary();
+    refreshPositions();
+    refreshTrades();
+    document.getElementById('last-refreshed').textContent = new Date().toLocaleTimeString();
+}
+
+refresh();
+setInterval(refresh, 15000);
+</script>
 </body>
 </html>

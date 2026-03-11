@@ -76,14 +76,30 @@ def get_historical_data(symbol, days=5):
         return df
     except Exception as e:
         logging.error(f"Alpha Vantage también falló para {symbol}: {str(e)}")
-        return pd.DataFrame()
 
-    # Third fallback: Yahoo Finance (daily data, free)
+    # Third fallback: Yahoo Finance intraday (15m)
     try:
         ticker = yf.Ticker(symbol)
-        df = ticker.history(period='1mo', interval='1d')  # Last month daily
+        df = ticker.history(period='5d', interval='15m')
         if df.empty:
-            raise ValueError("No data from Yahoo Finance")
+            raise ValueError("No intraday data from Yahoo Finance")
+        df.index = pd.to_datetime(df.index)
+        df = df.rename(columns={
+            'Open': 'open', 'High': 'high', 'Low': 'low',
+            'Close': 'close', 'Volume': 'volume'
+        })
+        df['returns'] = np.log(df['close'] / df['close'].shift(1))
+        logging.info(f"Yahoo Finance intradiario OK para {symbol}: {len(df)} filas")
+        return df
+    except Exception as e:
+        logging.warning(f"Yahoo Finance intradiario falló para {symbol}: {str(e)}")
+
+    # Fourth fallback: Yahoo Finance daily
+    try:
+        ticker = yf.Ticker(symbol)
+        df = ticker.history(period='3mo', interval='1d')
+        if df.empty:
+            raise ValueError("No daily data from Yahoo Finance")
         df.index = pd.to_datetime(df.index)
         df = df.rename(columns={
             'Open': 'open', 'High': 'high', 'Low': 'low',

@@ -1,3 +1,4 @@
+
 from config.settings import (
     PAPER_POSITION_SIZE_PCT,
     PAPER_RSI_ENTRY,
@@ -12,8 +13,10 @@ from src.database import (
     open_paper_position,
     update_paper_position_price,
 )
+from datetime import datetime
 
 STRATEGY_NAME = 'rsi_mean_reversion'
+STRATEGY_VERSION = 'rsi_mean_reversion_v1'
 
 
 def should_open_long(metrics, tags):
@@ -126,11 +129,24 @@ def process_paper_signal(symbol, metrics, tags):
             'symbol': symbol,
             'reason': 'Failed to open paper position',
         }
-
+    signal_id = build_signal_id(symbol, STRATEGY_NAME)
+    
     return {
         'action': 'opened',
+        'signal_id': signal_id,
         'symbol': symbol,
+        'strategy': STRATEGY_NAME,
+        'strategy_version': STRATEGY_VERSION,
         'reason': reason,
         'quantity': quantity,
         'entry_price': price,
+        'stop_loss': stop_loss,
+        'target_price': target_price,
+        'rsi': metrics.get('rsi'),
+        'tags': tags,
     }
+
+def build_signal_id(symbol, strategy_name, now=None):
+    timestamp = (now or datetime.utcnow()).strftime('%Y%m%d%H%M')
+    return f"{symbol}-{timestamp}-RSI1"
+

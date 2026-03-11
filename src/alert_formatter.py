@@ -50,12 +50,13 @@ def format_symbol_update(symbol, previous_tags, tags, metrics, advice, options_i
     avg_call_iv = (options_info or {}).get('avg_call_iv')
     avg_put_iv = (options_info or {}).get('avg_put_iv')
     options_line = 'Options IV: unavailable'
+    trade_ticket = format_trade_ticket(paper_result)
     if avg_call_iv is not None or avg_put_iv is not None:
         call_iv = f'{(avg_call_iv or 0) * 100:.1f}%'
         put_iv = f'{(avg_put_iv or 0) * 100:.1f}%'
         options_line = f'Options IV (call/put): {call_iv} / {put_iv}'
 
-    return '\n'.join([
+    lines = [
         f'Symbol: {symbol}',
         f'Previous tags: {previous}',
         f'Current tags: {current}',
@@ -68,7 +69,10 @@ def format_symbol_update(symbol, previous_tags, tags, metrics, advice, options_i
         build_manual_action(tags, metrics),
         options_line,
         format_paper_action(paper_result),
-    ])
+    ]
+    if trade_ticket:
+        lines.append(trade_ticket)
+    return '\n'.join(lines)
 
 
 def build_cycle_alert_email(cycle_time, cycle_updates, test_mode):
@@ -88,3 +92,17 @@ def build_cycle_alert_email(cycle_time, cycle_updates, test_mode):
         sections.append('-' * 72)
     body = '\n'.join(header + sections[:-1]) if sections else '\n'.join(header)
     return subject, body
+
+def format_trade_ticket(paper_result):
+    if not paper_result or paper_result.get('action') != 'opened':
+        return None
+    
+    return '\n'.join([
+        'Trade Ticket:',
+        f"Signal ID: {paper_result.get('signal_id', 'N/A')}",
+        f"Strategy: {paper_result.get('strategy_version', paper_result.get('strategy', 'N/A'))}",
+        f"Entry: {paper_result.get('entry_price', 0):.2f}",
+        f"Stop: {paper_result.get('stop_loss', 0):.2f}",
+        f"Target: {paper_result.get('target_price', 0):.2f}",
+        f"Quantity: {paper_result.get('quantity', 0)}",
+    ])

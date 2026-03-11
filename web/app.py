@@ -2,12 +2,23 @@ import os
 import sys
 from flask import Flask, jsonify, render_template
 import threading
+from datetime import datetime
+from src.utils import is_market_open
+from config.settings import TEST_MODE
 
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.database import app as flask_app, db, MarketData, Alert, OptionsData
-from config.settings import SYMBOLS, FLASK_HOST, FLASK_PORT
+from src.database import (
+    app as flask_app,
+    Alert,
+    MarketData,
+    OptionsData,
+    list_open_paper_positions,
+    list_recent_paper_trades,
+    get_paper_account_summary,
+)
+from config.settings import SYMBOLS, FLASK_HOST, FLASK_PORT, PAPER_STARTING_CASH
 
 # Flask routes for web dashboard
 @flask_app.route('/')
@@ -24,7 +35,16 @@ def dashboard():
                 'options_data': options,
                 'recent_alerts': alerts
             }
-    return render_template('dashboard.html', data=latest_data)
+        paper_positions = list_open_paper_positions()
+        paper_trades = list_recent_paper_trades()
+        paper_summary = get_paper_account_summary(PAPER_STARTING_CASH)
+    return render_template(
+        'dashboard.html',
+        data=latest_data,
+        paper_positions=paper_positions,
+        paper_trades=paper_trades,
+        paper_summary=paper_summary,
+    )
 
 @flask_app.route('/api/data')
 def api_data():
@@ -38,6 +58,86 @@ def api_data():
             'tags': d.tags
         } for d in data]
     return jsonify(result)
+
+@flask_app.route('/api/paper-positions')
+def api_paper_positions():
+    positions = list_open_paper_positions()
+    result = [{
+        'symbol': position.symbol,
+        'strategy': position.strategy,
+        'entry_time': position.entry_time.isoformat(),
+        'entry_price': position.entry_price,
+        'current_price': position.current_price,
+        'quantity': position.quantity,
+        'stop_loss': position.stop_loss,
+        'target_price': position.target_price,
+        'entry_reason': position.entry_reason,
+    } for position in positions]
+    return jsonify(result)
+
+@flask_app.route('/api/paper-trades')
+def api_paper_trades():
+    trades = list_recent_paper_trades()
+    result = [{
+        'symbol': trade.symbol,
+        'strategy': trade.strategy,
+        'entry_time': trade.entry_time.isoformat(),
+        'exit_time': trade.exit_time.isoformat(),
+        'entry_price': trade.entry_price,
+        'exit_price': trade.exit_price,
+        'quantity': trade.quantity,
+        'realized_pnl': trade.realized_pnl,
+        'realized_pct': trade.realized_pct,
+        'entry_reason': trade.entry_reason,
+        'exit_reason': trade.exit_reason,
+    } for trade in trades]
+    return jsonify(result)
+
+@flask_app.route('/api/health')
+def api_health():
+    summary = get_paper_account_summary(PAPER_STARTING_CASH)
+    return jsonify({
+        'status': 'ok',
+        'symbols_monitored': len(SYMBOLS),
+        'open_positions': summary['open_positions'],
+        'closed_trades': summary['closed_trades'],
+        'equity': summary['equity'],
+    })
+
+@flask_app.route('/api/summary')
+def api_summary():
+    with flask_app.app_context():
+        latest_market = MarketData.query.order_by(MarketData.timestamp.desc()).first()
+        latest_alert = Alert.query.order_by(Alert.timestamp.desc()).first()
+        latest_options = OptionsData.query.order_by(OptionsData.timestamp.desc()).first()
+
+        paper_summary = get_paper_account_summary(PAPER_STARTING_CASH)
+
+    now = datetime.now()
+    return jsonify({
+        'status': 'ok',
+        'server_time': now.isoformat(),
+        'market_open_now': is_market_open(now),
+        'test_mode': TEST_MODE,
+        'symbols_monitored': len(SYMBOLS),
+
+        'latest_market_data_at': latest_market.timestamp.isoformat() if latest_market else None,
+        'latest_alert_at': latest_alert.timestamp.isoformat() if latest_alert else None,
+        'latest_options_at': latest_options.timestamp.isoformat() if latest_options else None,
+
+        'paper' : {
+            'starting_cash': paper_summary['starting_cash'],
+            'cash': paper_summary['cash'],
+            'committed_capital': paper_summary['committed_capital'],
+            'market_value': paper_summary['market_value'],
+            'realized_pnl': paper_summary['realized_pnl'],
+            'unrealized_pnl': paper_summary['unrealized_pnl'],
+            'equity': paper_summary['equity'],
+            'open_positions': paper_summary['open_positions'],
+            'closed_trades': paper_summary['closed_trades'],
+        }
+    })
+    
 
 def start_flask():
     from config.settings import FLASK_HOST

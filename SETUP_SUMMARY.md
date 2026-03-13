@@ -23,17 +23,18 @@
 
 ---
 
-### 3. **Created Test Script**
-- ✅ File: `test_agent_run.py`
-- ✅ Tests market data fetching
-- ✅ Tests metrics calculation
-- ✅ Tests market classification
-- ✅ Shows results immediately
+### 3. **Created Test Suite Flow**
+- ✅ Files moved to `tests/` package
+- ✅ `tests/test_basic.py` for syntax and structure checks
+- ✅ `tests/test_imports.py` for import/smoke checks
+- ✅ `tests/test_agent_run.py` for market data validation
+- ✅ `tests/test_manual.py` for full manual validation
+- ✅ Single command flow via `./cli.sh test`
 
 **Result:** Can verify agent works without running full agent.
 
 ```bash
-./venv/bin/python test_agent_run.py
+./venv/bin/python tests/test_agent_run.py
 # Output:
 # ======================================================================
 # TEST RESULTS: 2 passed, 0 failed
@@ -53,7 +54,7 @@
 ```bash
 ./cli.sh help              # Show help
 ./cli.sh setup             # Install dependencies
-./cli.sh test              # Run quick test
+./cli.sh test              # Run full test suite (single command)
 ./cli.sh run               # Run agent (TEST_MODE)
 ./cli.sh run-prod          # Run agent (PRODUCTION)
 ./cli.sh logs              # View logs
@@ -145,7 +146,10 @@ nano .env
 ### New Files
 - `.env.example` - Template for credentials (safe to commit)
 - `cli.sh` - CLI helper script
-- `test_agent_run.py` - Quick test script
+- `tests/test_basic.py` - Basic syntax and structure checks
+- `tests/test_imports.py` - Import and initialization checks
+- `tests/test_agent_run.py` - Quick market-data script
+- `tests/test_manual.py` - Full manual suite
 - `CLI_DOCKER_GUIDE.md` - Comprehensive guide
 - `QUICK_REFERENCE.md` - Quick start reference
 

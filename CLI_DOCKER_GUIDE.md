@@ -7,6 +7,7 @@
 ./cli.sh test
 ```
 This will verify the agent works correctly and can fetch market data.
+It runs the full test suite with a single command.
 
 ---
 
@@ -30,10 +31,10 @@ All commands use the convenient `./cli.sh` script. Run `./cli.sh help` to see al
 ./cli.sh test
 ```
 **Output shows:**
+- ✅ Basic syntax and structure checks
+- ✅ Import and database smoke checks
 - ✅ Market data fetch success/failure
-- ✅ Metrics calculated correctly
-- ✅ Classification/tagging working
-- Sample price, volatility, IV rank
+- ✅ Metrics and classification validation
 
 ```
 TRADING AGENT TEST RUN
@@ -319,8 +320,8 @@ Access the Flask dashboard at: **http://localhost:5001**
 # Run backtest only
 ./venv/bin/python -c "from src.backtest import run_backtest; run_backtest('SPY')"
 
-# Quick test
-./venv/bin/python test_agent_run.py
+# Quick market-data test only
+./venv/bin/python tests/test_agent_run.py
 ```
 
 ### Interactive Python shell
@@ -370,6 +371,6 @@ cat data/logs/agent.log    # Check agent log file
 
 ---
 
-**Last Updated:** March 9, 2026  
+**Last Updated:** March 13, 2026  
 **Python Version:** 3.13+  
 **Platform:** macOS / Linux / Docker

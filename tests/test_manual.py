@@ -195,6 +195,17 @@ def test_alert_formatting():
             'hist_vol': 10.0,
             'iv_rank': 42.0,
         }
+        paper_result = {
+            'action': 'opened',
+            'signal_id': 'SPY-20260311-095500-RSI1',
+            'strategy': 'rsi_mean_reversion',
+            'strategy_version': 'rsi_mean_reversion_v1',
+            'reason': 'RSI setup triggered',
+            'quantity': 10,
+            'entry_price': 100.0,
+            'stop_loss': 98.0,
+            'target_price': 104.0,
+        }
         message = format_symbol_update(
             symbol='SPY',
             previous_tags=['LOW_VOL'],
@@ -202,7 +213,7 @@ def test_alert_formatting():
             metrics=metrics,
             advice='Potential bounce from oversold conditions.',
             options_info={'avg_call_iv': 0.22, 'avg_put_iv': 0.25},
-            paper_result={'action': 'opened', 'reason': 'RSI setup triggered', 'quantity': 10, 'entry_price': 100.0},
+            paper_result=paper_result,
         )
         subject, body = build_cycle_alert_email(datetime(2026, 3, 10, 15, 30, 0), [{'symbol': 'SPY', 'message': message}], True)
 
@@ -210,8 +221,23 @@ def test_alert_formatting():
         assert 'Symbol: SPY' in body, 'Missing symbol section in email body'
         assert 'Paper trade: OPENED' in body, 'Missing paper trade action in email body'
         assert 'Manual idea:' in body, 'Missing manual action guidance in email body'
+        assert 'Trade Ticket:' in body, 'Missing trade ticket block in email body'
+        assert 'Signal ID: SPY-20260311-095500-RSI1' in body, 'Missing signal ID in trade ticket'
+        assert 'Strategy: rsi_mean_reversion_v1' in body, 'Missing strategy version in trade ticket'
+        assert 'Entry: 100.00' in body, 'Missing entry price in trade ticket'
+        assert 'Stop: 98.00' in body, 'Missing stop loss in trade ticket'
+        assert 'Target: 104.00' in body, 'Missing target price in trade ticket'
+        assert 'Quantity: 10' in body, 'Missing quantity in trade ticket'
 
-        print('   ✅ Alert formatting: consolidated email content looks correct')
+        # Verify ticket is NOT present for non-opened actions
+        closed_result = {'action': 'closed', 'reason': 'Stop loss hit', 'trade': None}
+        message_closed = format_symbol_update(
+            symbol='SPY', previous_tags=['OVERSOLD'], tags=['TRENDING_DOWN'],
+            metrics=metrics, advice='Exit.', options_info=None, paper_result=closed_result,
+        )
+        assert 'Trade Ticket:' not in message_closed, 'Trade ticket should not appear for closed action'
+
+        print('   ✅ Alert formatting: consolidated email and trade ticket content correct')
         return True
     except Exception as e:
         print(f"   ❌ Alert formatting test failed: {e}")

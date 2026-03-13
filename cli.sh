@@ -31,8 +31,8 @@ case "${1:-help}" in
         echo "Available commands:"
         echo ""
         echo "  ./cli.sh setup              Setup virtual environment and install dependencies"
-        echo "  ./cli.sh test               Run test to verify agent works
-  ./cli.sh test-manual        Run manual testing suite (no pytest)"
+                echo "  ./cli.sh test               Run full test suite (single command)"
+                echo "  ./cli.sh test-manual        Run manual testing suite only"
         echo "  ./cli.sh run                Run agent (TEST_MODE must be set)"
         echo "  ./cli.sh run-prod           Run agent in production mode (respects market hours)"
         echo "  ./cli.sh logs               View agent logs"
@@ -58,12 +58,15 @@ case "${1:-help}" in
         ;;
         
     test)
-        echo_header "Running test"
+        echo_header "Running Full Test Suite"
         source venv/bin/activate 2>/dev/null || {
             echo_error "Virtual environment not activated. Run './cli.sh setup' first"
             exit 1
         }
-        ./venv/bin/python test_agent_run.py
+        ./venv/bin/python tests/test_basic.py && \
+        ./venv/bin/python tests/test_imports.py && \
+        ./venv/bin/python tests/test_agent_run.py && \
+        ./venv/bin/python tests/test_manual.py
         ;;
         
     test-manual)
@@ -72,7 +75,7 @@ case "${1:-help}" in
             echo_error "Virtual environment not activated. Run './cli.sh setup' first"
             exit 1
         }
-        ./venv/bin/python test_manual.py
+        ./venv/bin/python tests/test_manual.py
         ;;
         
     run)

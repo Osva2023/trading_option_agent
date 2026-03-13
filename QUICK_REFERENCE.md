@@ -52,7 +52,7 @@ cd /Users/grey/trading-agent-project
 ```bash
 ./cli.sh help             # Show this help
 ./cli.sh setup            # Install dependencies (one-time)
-./cli.sh test             # Run quick test
+./cli.sh test             # Run full test suite (single command)
 ./cli.sh run              # Run agent (TEST_MODE)
 ./cli.sh run-prod         # Run agent (PRODUCTION)
 ./cli.sh logs             # View live logs
@@ -162,8 +162,9 @@ source venv/bin/activate
 # Run agent directly
 python run.py
 
-# Run test directly
-python test_agent_run.py
+# Run specific tests directly
+python tests/test_agent_run.py
+python tests/test_manual.py
 
 # View logs
 tail -f data/logs/agent.log
@@ -215,5 +216,5 @@ docker logs -f trading-agent
 
 ---
 
-*Last Updated: March 9, 2026*  
+*Last Updated: March 13, 2026*  
 *Platform: macOS / Linux / Docker*

@@ -42,6 +42,7 @@ Thumbs.db
 
 # Project specific
 data/*.db
+data/*.db.backup.*
 data/logs/*.log
 config/secrets.env
 *.log

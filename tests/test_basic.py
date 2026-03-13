@@ -5,6 +5,9 @@ import sys
 import os
 from datetime import datetime
 
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, PROJECT_ROOT)
+
 print("=" * 60)
 print("PROJECT STRUCTURE & SYNTAX CHECK")
 print("=" * 60)
@@ -23,7 +26,7 @@ required_files = [
 
 print("\nChecking required files:")
 for file in required_files:
-    path = os.path.join(os.path.dirname(__file__), file)
+    path = os.path.join(PROJECT_ROOT, file)
     exists = "✓" if os.path.exists(path) else "✗"
     print(f"  {exists} {file}")
 
@@ -41,7 +44,7 @@ python_files = [
 
 import py_compile
 for file in python_files:
-    path = os.path.join(os.path.dirname(__file__), file)
+    path = os.path.join(PROJECT_ROOT, file)
     try:
         py_compile.compile(path, doraise=True)
         print(f"  ✓ {file}")

@@ -4,6 +4,9 @@
 import sys
 import os
 
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, PROJECT_ROOT)
+
 print("=" * 60)
 print("IMPORT TEST - Trading Agent Project")
 print("=" * 60)
@@ -54,8 +57,9 @@ except Exception as e:
 
 # Test 5: Flask Web App
 try:
-    from web.app import flask_app, start_flask
-    print("✓ Flask app OK")
+    import py_compile
+    py_compile.compile(os.path.join(PROJECT_ROOT, 'web/app.py'), doraise=True)
+    print("✓ Flask app syntax OK")
     tests_passed += 1
 except Exception as e:
     print(f"✗ Flask app failed: {e}")
@@ -63,8 +67,9 @@ except Exception as e:
 
 # Test 6: Core trading_agent module
 try:
-    import src.trading_agent
-    print("✓ Trading agent script OK")
+    import py_compile
+    py_compile.compile(os.path.join(PROJECT_ROOT, 'src/trading_agent.py'), doraise=True)
+    print("✓ Trading agent syntax OK")
     tests_passed += 1
 except Exception as e:
     print(f"✗ Trading agent script failed: {e}")

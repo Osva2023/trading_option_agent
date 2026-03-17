@@ -2,17 +2,35 @@ import os
 import sys
 import backtrader as bt
 import pandas as pd
+from datetime import datetime
 
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.utils import get_historical_data, calculate_metrics, classify_market
 from config.settings import BACKTEST_DAYS
+from src.strategies import evaluate_strategy
 
 class TradingStrategy(bt.Strategy):
     def __init__(self):
-        self.dataclose = self.datas[0].close
         self.order = None
+        self.active_trade_risk = None
+
+    def notify_order(self, order):
+        if order.status in [order.Submitted, order.Accepted]:
+            return
+
+        self.order = None
+
+        if order.status in [order.Completed] and order.isbuy() and self.active_trade_risk:
+            # Keep risk anchors tied to the filled entry price.
+            fill_price = order.executed.price
+            atr = self.active_trade_risk.get('atr', 0)
+            if atr and fill_price:
+                self.active_trade_risk['stop_loss'] = round(fill_price - atr, 2)
+                self.active_trade_risk['target_price'] = round(fill_price + (atr * 2), 2)
+        elif order.status in [order.Canceled, order.Margin, order.Rejected]:
+            self.active_trade_risk = None
 
     def next(self):
         if self.order:
@@ -46,11 +64,41 @@ class TradingStrategy(bt.Strategy):
 
         tags, _ = classify_market(metrics, df)
 
-        # Simple strategy: Buy on TRENDING_UP + LOW_VOL, Sell on TRENDING_DOWN
-        if 'TRENDING_UP' in tags and 'LOW_VOL' in tags and not self.position:
-            self.order = self.buy()
-        elif 'TRENDING_DOWN' in tags and self.position:
-            self.order = self.sell()
+        position_ctx = None
+        if self.position:
+            price = metrics['last_close']
+            position_ctx = {
+                'quantity': int(self.position.size),
+                'stop_loss': self.active_trade_risk.get('stop_loss') if self.active_trade_risk else None,
+                'target_price': self.active_trade_risk.get('target_price') if self.active_trade_risk else None,
+                'entry_price': self.position.price,
+                'current_price': price,
+            }
+
+        signal = evaluate_strategy(
+            symbol=self.data._name or 'BACKTEST',
+            metrics=metrics,
+            tags=tags,
+            context={
+                'position': position_ctx,
+                'cash_available': self.broker.getcash(),
+                'now': datetime.utcnow(),
+            },
+        )
+
+        if not signal:
+            return
+
+        if signal.action == 'open' and not self.position and signal.quantity:
+            self.active_trade_risk = {
+                'stop_loss': signal.stop_loss,
+                'target_price': signal.target_price,
+                'atr': metrics.get('atr') or 0,
+            }
+            self.order = self.buy(size=int(signal.quantity))
+        elif signal.action == 'close' and self.position:
+            self.order = self.sell(size=int(self.position.size))
+            self.active_trade_risk = None
 
 def run_backtest(symbol):
     cerebro = bt.Cerebro()

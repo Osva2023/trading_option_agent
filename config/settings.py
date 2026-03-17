@@ -47,5 +47,14 @@ PAPER_POSITION_SIZE_PCT = float(os.getenv('PAPER_POSITION_SIZE_PCT', '0.10'))
 PAPER_RSI_ENTRY = float(os.getenv('PAPER_RSI_ENTRY', '30'))
 PAPER_RSI_EXIT = float(os.getenv('PAPER_RSI_EXIT', '55'))
 
+# Strategy Layer
+STRATEGY_ENABLED = os.getenv('STRATEGY_ENABLED', 'True').lower() in ('true', '1', 'yes')
+STRATEGY_SYMBOLS_STR = os.getenv('STRATEGY_SYMBOLS', 'SPY,QQQ')
+STRATEGY_SYMBOLS = [s.strip() for s in STRATEGY_SYMBOLS_STR.split(',') if s.strip()]
+RSI_ENTRY_THRESHOLD = float(os.getenv('RSI_ENTRY_THRESHOLD', str(PAPER_RSI_ENTRY)))
+RSI_EXIT_THRESHOLD = float(os.getenv('RSI_EXIT_THRESHOLD', str(PAPER_RSI_EXIT)))
+ATR_STOP_MULTIPLIER = float(os.getenv('ATR_STOP_MULTIPLIER', '1.0'))
+ATR_TARGET_MULTIPLIER = float(os.getenv('ATR_TARGET_MULTIPLIER', '2.0'))
+
 # Test Mode
 TEST_MODE = os.getenv('TEST_MODE', 'False').lower() in ('true', '1', 'yes')

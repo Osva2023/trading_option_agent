@@ -21,6 +21,31 @@ echo_error() {
     echo -e "${RED}✗ $1${NC}"
 }
 
+resolve_python_bin() {
+    if [ -x ".venv/bin/python" ]; then
+        echo ".venv/bin/python"
+    elif [ -x "venv/bin/python" ]; then
+        echo "venv/bin/python"
+    else
+        echo ""
+    fi
+}
+
+activate_env() {
+    if [ -f ".venv/bin/activate" ]; then
+        source .venv/bin/activate
+        return 0
+    fi
+
+    if [ -f "venv/bin/activate" ]; then
+        source venv/bin/activate
+        return 0
+    fi
+
+    echo_error "Virtual environment not found. Run './cli.sh setup' first"
+    return 1
+}
+
 # Change to project directory
 cd "$(dirname "$0")"
 
@@ -59,37 +84,40 @@ case "${1:-help}" in
         
     test)
         echo_header "Running Full Test Suite"
-        source venv/bin/activate 2>/dev/null || {
-            echo_error "Virtual environment not activated. Run './cli.sh setup' first"
-            exit 1
-        }
-        ./venv/bin/python tests/test_basic.py && \
-        ./venv/bin/python tests/test_imports.py && \
-        ./venv/bin/python tests/test_agent_run.py && \
-        ./venv/bin/python tests/test_manual.py
+        activate_env || exit 1
+        PYTHON_BIN="$(resolve_python_bin)"
+        [ -n "$PYTHON_BIN" ] || exit 1
+        "$PYTHON_BIN" tests/test_basic.py && \
+        "$PYTHON_BIN" tests/test_imports.py && \
+        "$PYTHON_BIN" tests/test_strategy_layer.py && \
+        "$PYTHON_BIN" tests/test_agent_run.py && \
+        "$PYTHON_BIN" tests/test_manual.py
         ;;
         
     test-manual)
         echo_header "Running Manual Test Suite"
-        source venv/bin/activate 2>/dev/null || {
-            echo_error "Virtual environment not activated. Run './cli.sh setup' first"
-            exit 1
-        }
-        ./venv/bin/python tests/test_manual.py
+        activate_env || exit 1
+        PYTHON_BIN="$(resolve_python_bin)"
+        [ -n "$PYTHON_BIN" ] || exit 1
+        "$PYTHON_BIN" tests/test_manual.py
         ;;
         
     run)
         echo_header "Running Trading Agent (TEST_MODE)"
-        source venv/bin/activate 2>/dev/null || exit 1
+        activate_env || exit 1
+        PYTHON_BIN="$(resolve_python_bin)"
+        [ -n "$PYTHON_BIN" ] || exit 1
         echo_success "Starting agent with TEST_MODE enabled..."
         echo "(Press Ctrl+C to stop)"
         echo ""
-        ./venv/bin/python run.py
+        "$PYTHON_BIN" run.py
         ;;
         
     run-prod)
         echo_header "Running Trading Agent (PRODUCTION)"
-        source venv/bin/activate 2>/dev/null || exit 1
+        activate_env || exit 1
+        PYTHON_BIN="$(resolve_python_bin)"
+        [ -n "$PYTHON_BIN" ] || exit 1
         
         # Check if TEST_MODE is False
         if grep -q "TEST_MODE=True" .env 2>/dev/null; then
@@ -102,7 +130,7 @@ case "${1:-help}" in
         echo "(Only runs during market hours: 9:30-10:30, 12:00-13:00, 15:00-16:00 ET)"
         echo "(Press Ctrl+C to stop)"
         echo ""
-        ./venv/bin/python run.py
+        "$PYTHON_BIN" run.py
         ;;
         
     logs)

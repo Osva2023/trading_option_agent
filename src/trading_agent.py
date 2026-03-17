@@ -8,16 +8,23 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config.settings import (
     SYMBOLS, POLL_INTERVAL, BACKTEST_MODE, LOG_FILE, TEST_MODE,
-    EMAIL_FROM, EMAIL_TO, POLYGON_API_KEY
+    EMAIL_FROM, EMAIL_TO, PAPER_STARTING_CASH, POLYGON_API_KEY
 )
 from src.utils import (
     setup_logging, get_historical_data, calculate_metrics, classify_market,
     get_options_data, send_email, is_market_open, sleep_until_next_window
 )
-from src.database import save_market_data, save_alert, save_options_data
+from src.database import (
+    get_open_paper_position,
+    get_paper_account_summary,
+    save_alert,
+    save_market_data,
+    save_options_data,
+)
 from src.backtest import run_backtest
-from src.paper_trading import process_paper_signal
+from src.paper_trading import execute_paper_signal, sync_paper_position
 from src.alert_formatter import build_cycle_alert_email, format_symbol_update
+from src.strategies import evaluate_strategy
 
 print("=== AGENT STARTED ===")
 print("Python version:", sys.version)
@@ -84,7 +91,17 @@ while True:
             save_market_data(symbol, metrics, tags)
             save_options_data(symbol, options_info)
 
-            paper_result = process_paper_signal(symbol, metrics, tags)
+            position = get_open_paper_position(symbol)
+            if position:
+                sync_paper_position(symbol, metrics['last_close'])
+
+            strategy_context = {
+                'position': position,
+                'cash_available': get_paper_account_summary(PAPER_STARTING_CASH)['cash'],
+                'now': now,
+            }
+            strategy_signal = evaluate_strategy(symbol, metrics, tags, strategy_context)
+            paper_result = execute_paper_signal(strategy_signal)
             paper_note = ""
             if paper_result and paper_result.get('action') in {'opened', 'closed'}:
                 paper_note = f" | Paper: {paper_result['action']} ({paper_result['reason']})"

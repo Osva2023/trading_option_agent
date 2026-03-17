@@ -24,6 +24,7 @@
     <h1>Trading Agent Dashboard</h1>
     <div id="status-bar">
         <span>Market: <span id="market-badge" class="badge badge-gray">loading...</span></span>
+        <span>Scanner: <span id="scanner-badge" class="badge badge-gray">loading...</span></span>
         <span>Equity: $<span id="equity-val">—</span></span>
         <span>Net P&amp;L: <span id="pnl-val">—</span></span>
         <span>Symbols: {{ data.keys() | list | length }}</span>
@@ -168,6 +169,11 @@ function refreshSummary() {
             var badge = document.getElementById('market-badge');
             badge.textContent = d.market_open_now ? 'OPEN' : 'CLOSED';
             badge.className = 'badge ' + (d.market_open_now ? 'badge-green' : 'badge-red');
+
+            var scannerBadge = document.getElementById('scanner-badge');
+            scannerBadge.textContent = d.scanner_window_open_now ? 'ACTIVE' : 'PAUSED';
+            scannerBadge.className = 'badge ' + (d.scanner_window_open_now ? 'badge-green' : 'badge-gray');
+
             document.getElementById('equity-val').textContent = fmt(p.equity);
             var totalPnl = p.realized_pnl + p.unrealized_pnl;
             var pnlEl = document.getElementById('pnl-val');
@@ -177,6 +183,9 @@ function refreshSummary() {
             var badge = document.getElementById('market-badge');
             badge.textContent = 'ERR';
             badge.className = 'badge badge-orange';
+            var scannerBadge = document.getElementById('scanner-badge');
+            scannerBadge.textContent = 'ERR';
+            scannerBadge.className = 'badge badge-orange';
         });
 }
 

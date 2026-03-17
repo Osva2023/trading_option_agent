@@ -3,7 +3,7 @@ import sys
 from flask import Flask, jsonify, render_template
 import threading
 from datetime import datetime
-from src.utils import is_market_open
+from src.utils import is_market_open, is_market_session_open
 from config.settings import TEST_MODE
 
 # Add project root to path
@@ -117,7 +117,8 @@ def api_summary():
     return jsonify({
         'status': 'ok',
         'server_time': now.isoformat(),
-        'market_open_now': is_market_open(now),
+        'market_open_now': is_market_session_open(now),
+        'scanner_window_open_now': is_market_open(now),
         'test_mode': TEST_MODE,
         'symbols_monitored': len(SYMBOLS),
 

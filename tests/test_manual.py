@@ -21,7 +21,8 @@ def test_imports():
         from src.database import MarketData, Alert, OptionsData, PaperPosition, PaperTrade
         from src.backtest import run_backtest
         from src.alert_formatter import build_cycle_alert_email
-        from src.paper_trading import process_paper_signal
+        from src.paper_trading import execute_paper_signal
+        from src.strategies import evaluate_strategy
         from web.app import flask_app
         print("   ✅ All imports successful")
         return True
@@ -145,7 +146,8 @@ def test_paper_trading():
     print("🧪 Test 8: Paper Trading Engine")
     try:
         from src.database import app, db, PaperPosition, PaperTrade
-        from src.paper_trading import process_paper_signal
+        from src.paper_trading import execute_paper_signal, sync_paper_position
+        from src.strategies import evaluate_strategy
 
         entry_metrics = {
             'last_close': 100.0,
@@ -165,10 +167,26 @@ def test_paper_trading():
             PaperPosition.query.delete()
             db.session.commit()
 
-        opened = process_paper_signal('SPY', entry_metrics, ['TRENDING_UP', 'OVERSOLD'])
+        entry_signal = evaluate_strategy(
+            'SPY',
+            entry_metrics,
+            ['TRENDING_UP', 'OVERSOLD'],
+            {'cash_available': 10000, 'now': datetime(2026, 3, 17, 10, 0, 0)},
+        )
+        opened = execute_paper_signal(entry_signal)
         assert opened and opened['action'] == 'opened', "Paper position did not open"
 
-        closed = process_paper_signal('SPY', exit_metrics, ['TRENDING_UP', 'RSI_NEUTRAL'])
+        sync_paper_position('SPY', exit_metrics['last_close'])
+        with app.app_context():
+            position = PaperPosition.query.filter_by(symbol='SPY').first()
+
+        exit_signal = evaluate_strategy(
+            'SPY',
+            exit_metrics,
+            ['TRENDING_UP', 'RSI_NEUTRAL'],
+            {'position': position, 'cash_available': 10000, 'now': datetime(2026, 3, 17, 11, 0, 0)},
+        )
+        closed = execute_paper_signal(exit_signal)
         assert closed and closed['action'] == 'closed', "Paper position did not close"
 
         with app.app_context():

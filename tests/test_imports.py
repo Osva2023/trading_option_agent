@@ -55,6 +55,15 @@ except Exception as e:
     print(f"✗ Backtest module failed: {e}")
     tests_failed += 1
 
+# Test 4b: Strategy layer
+try:
+    from src.strategies import StrategySignal, evaluate_strategy
+    print("✓ Strategy layer OK")
+    tests_passed += 1
+except Exception as e:
+    print(f"✗ Strategy layer failed: {e}")
+    tests_failed += 1
+
 # Test 5: Flask Web App
 try:
     import py_compile

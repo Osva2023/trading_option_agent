@@ -284,8 +284,24 @@ MARKET_WINDOWS = [
     (15, 0, 16, 0)    # before close
 ]
 
+REGULAR_MARKET_SESSION = (9, 30, 16, 0)
+
+
+def is_market_session_open(now):
+    """Check if US regular session is open (weekdays, 09:30-16:00 local ET clock)."""
+    if now.weekday() >= 5:  # weekend
+        return False
+
+    hour = now.hour
+    minute = now.minute
+    start_h, start_m, end_h, end_m = REGULAR_MARKET_SESSION
+    return (
+        (hour > start_h or (hour == start_h and minute >= start_m)) and
+        (hour < end_h or (hour == end_h and minute < end_m))
+    )
+
 def is_market_open(now):
-    """Check if current time is within market windows on weekdays."""
+    """Check if current time is within configured scanner windows on weekdays."""
     if now.weekday() >= 5:  # weekend
         return False
     hour = now.hour

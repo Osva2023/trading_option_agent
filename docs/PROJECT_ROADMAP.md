@@ -2,6 +2,25 @@
 
 This roadmap turns the current checklist into an execution plan for the existing trading agent codebase.
 
+## Status Update - March 17, 2026
+
+Completed in TA-STRAT-001 and recent prior milestones:
+
+- Explicit strategy layer added (`src/strategies.py`) with deterministic signal contract.
+- Live loop now evaluates strategy first and executes paper signals second.
+- Paper trading flow is decoupled from strategy decision logic.
+- Dashboard now distinguishes market session status from scanner-window status.
+- Backtest now consumes strategy-layer signals rather than placeholder logic.
+- Tests are reorganized in `tests/`, and `./cli.sh test` includes strategy-layer coverage.
+
+Current biggest gaps after this milestone:
+
+- Structured logging and runtime observability (`/api/metrics`, cycle/error visibility).
+- Backtest result persistence and reporting (win rate, drawdown, parameter comparison).
+- `src/utils.py` modular split to reduce coupling.
+- Cloud hardening path (secrets + PostgreSQL + deployment shape).
+- Broker integration remains intentionally deferred.
+
 ## Current State
 
 The project already has these working foundations:
@@ -12,14 +31,16 @@ The project already has these working foundations:
 - Flask dashboard for basic visibility
 - Backtesting module using backtrader
 - Technical indicators including EMA, ATR, IV proxy, and RSI
+- Explicit strategy layer used by live and backtest flows
+- Paper trading ledger with open/closed position lifecycle
+- Flask-Migrate baseline and migration scaffolding
 
 The project is still missing these key capabilities:
 
-- Explicit trade strategy rules for live decision-making
-- Paper trading ledger and portfolio simulation
-- Database migrations for schema changes
 - Cloud deployment target for 24/7 uptime
 - Structured monitoring and health metrics
+- Backtest result reports and parameter analysis
+- Modularized utility architecture
 - Broker API integration for future automation
 
 ## Phase 1: Stabilize The Core
@@ -311,16 +332,13 @@ Why this should come later:
 
 The best sequence for this codebase is:
 
-1. Reorganize tests and add migrations
-2. Split `src/utils.py` into focused modules
-3. Add `src/strategies.py` with one explicit strategy
-4. Add paper trading models and engine
-5. Expand the Flask dashboard around paper trading and health visibility
-6. Improve backtesting reports and parameter validation
-7. Move from SQLite to PostgreSQL
-8. Deploy to cloud with proper secrets management
-9. Add monitoring and metrics
-10. Evaluate broker API integration after paper results are stable
+1. Add monitoring and observability (`/api/metrics`, structured logs, dashboard heartbeat)
+2. Improve backtesting reports and parameter validation outputs
+3. Split `src/utils.py` into focused modules
+4. Move from SQLite to PostgreSQL
+5. Deploy to cloud with proper secrets management
+6. Expand runtime monitoring dashboards/alerts
+7. Evaluate broker API integration after paper results are stable
 
 ## What Not To Do Yet
 
@@ -335,6 +353,6 @@ Avoid these moves right now:
 
 If only one next feature is chosen, it should be this:
 
-Add a simple paper trading engine driven by one explicit RSI-based strategy, then show open paper positions and trade history in the Flask dashboard.
+Add runtime observability: `/api/metrics` + structured signal/email logging + dashboard heartbeat for last cycle and last email result.
 
-That will make the project materially more useful than another indicator or another deployment layer.
+That adds the highest operational confidence now that strategy execution is already explicit.

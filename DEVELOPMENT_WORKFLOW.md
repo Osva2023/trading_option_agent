@@ -178,31 +178,36 @@ git push origin --delete feature/old  # Delete remote branch
 
 | Branch | Commit | Notes |
 |--------|--------|-------|
-| `main` | `e6d90a5` | Contains all dev work to date (accidental merge — see note below) |
-| `dev`  | `e6d90a5` | Synced with main — all features present |
+| `main` | `e6d90a5` | Last production baseline |
+| `dev`  | `f0eddca` | Current integration branch |
+| `TA-STRAT-001` | `338439c` | Strategy layer + dashboard status split + backtest alignment (open PR branch) |
 
 > ⚠️ **Note (March 11):** PR #5 (`feature/dashboard-live-refresh`) was merged into `main` instead of `dev` on GitHub. Fixed by fast-forwarding `dev` to `origin/main`. Both branches are now aligned. Future PRs should target `dev`.
 
 ---
 
-## 📊 Project Status — Updated March 11, 2026
+## 📊 Project Status — Updated March 17, 2026
 
-### What Was Completed Today
+### What Was Completed Recently
 
 | Area | Yesterday | Today | Status |
 |------|-----------|-------|--------|
-| **Web Dashboard** | Basic, no real-time, broken IV display | JS auto-polling every 15s, status bar, live P&L coloring, `/api/summary` endpoint | ✅ Resolved |
-| **Database Migrations** | Fragile, no schema management | Flask-Migrate initialized, baseline revision stamped | ✅ Resolved |
-| **Data Sources / Fallback** | Yahoo fallback unreachable (blocked by early `return`) | 4-level chain working: Polygon → Alpha Vantage → Yahoo 15m → Yahoo daily | ✅ Resolved |
-| **Email Alerts** | One email per symbol per cycle (noisy) | One consolidated summary email per cycle | ✅ Resolved |
-| **Paper Trading Engine** | Missing | RSI mean-reversion strategy, P&L tracking, stop/target via ATR | ✅ Resolved |
+| **Web Dashboard** | Live status existed but market/scanner semantics were mixed | Split status into real market session + scanner active window | ✅ Resolved |
+| **Strategy Layer** | Decision logic mixed inside paper execution | Explicit `src/strategies.py` with deterministic contract and tests | ✅ Resolved |
+| **Paper Trading Flow** | Strategy and execution tightly coupled | Strategy evaluates, paper engine executes signals | ✅ Resolved |
+| **Backtesting** | Placeholder tag rules | Uses shared strategy signals for entry/exit decisions | ✅ Improved |
 | **Cloud Deployment** | Docker only, no cloud target | No change | 🔲 Still partial |
-| **Backtesting** | backtrader present but basic example only | No change | 🔲 Still basic |
-| **Strategy Expansion** | Signals only, no explicit entries/exits | RSI paper engine added; live loop still alert-only | 🟡 Partially improved |
 | **Automated Trading** | No broker integration | No change | 🔲 Missing |
 | **Monitoring / Logging** | File logging only | No change | 🔲 Basic |
 
-### What Was Committed Today (March 11)
+### What Was Committed Today (March 17)
+
+```
+338439c  refactor: align backtest with strategy layer signals
+b9dc748  feat: add explicit strategy layer and scanner/market status split
+```
+
+### Previous Milestone (March 11)
 
 ```
 e6d90a5  Merge PR #5 feature/dashboard-live-refresh → main
@@ -221,13 +226,15 @@ bdd3fc9  Merge PR #2 feature/paper-trading-engine
 
 ```
 trading_agent.py (main loop)
+  ├── strategies.py         ← explicit entry/exit decision layer
+  ├── paper_trading.py      ← signal execution only
   ├── utils.py              ← data fetch (4-source fallback), indicators, email, market hours
   ├── alert_formatter.py    ← builds one consolidated email per cycle
   └── database.py           ← SQLAlchemy models, Flask app, Flask-Migrate
 
 web/app.py (Flask routes)
   ├── GET /                 ← server-rendered dashboard (Jinja)
-  ├── GET /api/summary      ← live summary JSON (polled every 15s)
+  ├── GET /api/summary      ← live summary JSON (market session + scanner status)
   ├── GET /api/paper-positions
   ├── GET /api/paper-trades
   ├── GET /api/data
@@ -248,30 +255,31 @@ migrations/
 - ✅ SQLite persistence with migration safety net
 - ✅ Paper trading engine with stop/target, P&L tracking
 - ✅ Live dashboard with auto-refresh (no page reload needed)
+- ✅ Clear status semantics: market open vs scanner active window
 - ✅ 4-level data fallback chain (resilient to API rate limits)
-- ✅ Manual test suite: 9/9 passing
+- ✅ Strategy-specific deterministic tests + manual suite passing
 
 ---
 
 ## 🚀 Recommended Next Steps (Priority Order)
 
-### 1. `feature/strategy-engine` — HIGH PRIORITY
-Turn tags into explicit trade rules. Right now the live loop is "analyze and alert." The paper engine already has entry/exit logic for RSI, but the live agent does not decide.
-- Define rule-based strategy: if `OVERSOLD + TRENDING_UP` → enter long, size = 10% equity, stop = ATR×1.5 below, target = ATR×3 above
-- Add `evaluate_strategy()` to `trading_agent.py` that calls `open_paper_position()` directly from the live loop
-- This is the highest-leverage change: connects signal → live paper execution
+### 1. `feature/monitoring-logs` — HIGH PRIORITY
+Now that strategy decisions are explicit, observability is the biggest gap.
+- Add `/api/metrics` endpoint exposing cycle count, last successful cycle time, and recent error count
+- Add structured logging (JSON or key-value) for signal decisions and email delivery results
+- Add scanner heartbeat to dashboard status bar (last cycle time + last email result)
 
-### 2. `feature/backtest-improvement` — MEDIUM PRIORITY
-The backtest module uses a placeholder strategy. Align it with the real RSI-tag strategy.
-- Replace the example strategy in `backtest.py` with the same RSI rules used in the live loop
-- Persist results to the DB or a JSON report instead of printing
-- Add parameter sweep: RSI oversold threshold (20–35), position size (5–15%)
+### 2. `feature/backtest-reports` — MEDIUM PRIORITY
+Backtest now uses strategy signals, but result handling is still basic.
+- Persist backtest results to JSON or DB instead of console-only output
+- Add baseline metrics: win rate, avg win/loss, max drawdown, trade count
+- Add optional parameter sweeps for RSI and ATR multipliers
 
-### 3. `feature/monitoring-logs` — MEDIUM PRIORITY
-`utils.py` is doing too much. Structured logging would help.
-- Add a `/api/metrics` endpoint exposing cycle count, error count, last data timestamps
-- Split `utils.py` into `data_fetcher.py`, `indicators.py`, and keep `utils.py` for email/market hours
-- Add a simple health badge to the dashboard status bar (last cycle time, error count)
+### 3. `feature/utils-split` — MEDIUM PRIORITY
+`utils.py` still mixes several responsibilities.
+- Split into `data_sources.py`, `indicators.py`, `alerts.py`, and `market_hours.py`
+- Keep compatibility imports to reduce regression risk
+- Add module-level tests for each split component
 
 ### 4. `feature/cloud-deployment` — LOWER PRIORITY (after strategy is solid)
 The Docker image already exists. What's needed:
@@ -295,4 +303,4 @@ Alpaca paper API is free and well-documented. Long-term target once strategy eng
 
 ---
 
-*Last Updated: March 11, 2026*
+*Last Updated: March 17, 2026*
